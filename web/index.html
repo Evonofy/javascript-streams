@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Javascript Streams</title>
+    <link rel="stylesheet" href="https://matcha.mizu.sh/matcha.css" />
+  </head>
+  <body>
+    <h1>Javascript Streams</h1>
+    <p>Demo project to test out streaming HTTP response from Node.js to Web</p>
+
+    <button id="load-more">load users...</button>
+    <p id="user-count"></p>
+    
+    <br />
+
+    <table style="float: left;">
+      <thead>
+        <tr>
+          <td style="width: 150px;">Nome</td>
+          <td style="width: 220px;">E-mail</td>
+          <td style="width: 80px;">Idade</td>
+        </tr>
+      </thead>
+
+      <tbody></tbody>
+    </table>
+
+    <script type="module">
+      const table = document.querySelector("tbody")
+      const button = document.querySelector("button")
+      const userCount = document.querySelector("p#user-count")
+      
+      button.addEventListener("click", fetchUsers)
+
+      let count = 0
+
+      async function fetchUsers() {
+        const response = await fetch('http://localhost:3333/products');
+        const reader = response.body.getReader()
+        
+        button.disabled = true
+        button.textContent = "loading..."
+
+        for await(const { name, age, email } of process(reader)) {
+          count += 1
+
+          userCount.textContent = `usuários: ${count}`
+          
+          const row = document.createElement("tr")
+
+          row.innerHTML = `
+          <td>${name}</td>
+          <td>${email}</td>
+          <td>${age}</td>
+          `
+  
+          table.insertBefore(row, table.firstChild)
+        }
+
+        button.disabled = false
+      }
+
+      async function* process(readableStream) {
+        const decoder = new TextDecoder()
+        
+        while(true) {
+          const { value, done } = await readableStream.read()
+
+          if(done) {
+            return
+          }
+
+          const user = decoder.decode(value)
+
+          yield JSON.parse(user)
+        }
+      }
+    </script>
+  </body>
+</html>
